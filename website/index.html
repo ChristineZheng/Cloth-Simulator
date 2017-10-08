@@ -1,0 +1,578 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<style>
+  body {
+    padding: 100px;
+    width: 1000px;
+    margin: auto;
+    text-align: left;
+    font-weight: 300;
+    font-family: 'Open Sans', sans-serif;
+    color: #121212;
+  }
+  div.padded {  
+      padding-top: 0px;  
+      padding-right: 100px;  
+      padding-bottom: 0.25in;  
+      padding-left: 100px;  
+  } 
+  h1, h2, h3, h4 {
+    font-family: 'Source Sans Pro', sans-serif;
+  }
+</style>
+<title>CS 184 Mesh Editor</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+</head>
+
+
+<body>
+
+<h1 align="middle">CS 184: Computer Graphics and Imaging, Spring 2017</h1>
+<h1 align="middle">Project 4: Cloth Simulator</h1>
+<h2 align="middle">Christine Guomin Zheng, CS184-aad</h2>
+
+<br><br>
+
+<div>
+
+<h2 align="middle">Overview</h2>
+<p> In the project, I implemented a real-time simulation of cloth using a point masses and springs system. The cloth is divided into evenly spaced point masses and then connected by springs. The position of each of the point mass is recalculated at each time step based on the external forces. I take three constraints between point masses as STRUCTURAL, SHEARING, BENDING. I then compute the total force acting on each point mass and use Verlet integration to calculate the new position. Later on, I implement cloth collisions with sphere, plane and self collision. Self collision is the hardest part for me through out the whole project. In order to prevent cloth clip through, I implemented spatial hashing to apply a repulsive collision force to point mass if any pair of point masses are too close to each other. The result comes out awesome!</p>
+
+<br></br>
+
+<h2 align="middle">Part 1: Masses and springs</h2>
+<p> In part 1, I implemented an evenly spaced grid of point masses and springs that connect point masses together. Spring has three types, STRUCTURAL, SHEARING, BENDING. See below images </p>
+
+<h3> wireframe of Pinned2.json </h3>
+<div align="center">
+  <table style="width=100%">
+    <tr>
+      <td align="middle">
+      <img src="part1/1.png" width="600px" />
+    </tr>
+  </table>
+</div>
+<div align="center">
+  <table style="width=100%">
+    <tr>
+      <td align="middle">
+      <img src="part1/2.png" width="600px" />
+    </tr>
+  </table>
+</div>
+
+<h3> Without shearing </h3>
+<div align="center">
+  <table style="width=100%">
+    <tr>
+      <td align="middle">
+      <img src="part1/without_shearing.png" width="600px" />
+      <figcaption align="middle">Without Shearing</figcaption>
+    </tr>
+  </table>
+</div>
+
+<h3> Only shearing </h3>
+<div align="center">
+  <table style="width=100%">
+    <tr>
+      <td align="middle">
+      <img src="part1/only_shearing.png" width="600px" />
+      <figcaption align="middle">Only Shearing</figcaption>
+    </tr>
+  </table>
+</div>
+
+<h3> All constraints </h3>
+<div align="center">
+  <table style="width=100%">
+    <tr>
+      <td align="middle">
+      <img src="part1/all_constraints.png" width="600px" />
+      <figcaption align="middle">All Constraints</figcaption>
+    </tr>
+  </table>
+</div>
+
+<br><br>
+
+<h2 align="middle">Part 2: Simulation via numerical integration</h2>
+<h3 align="middle">Different ks</h3>
+<p> The constant ks controls the stretchiness of the cloth. Below images are taken at the final restful state of the cloth. You can see that the smaller the ks, the cloth is more stretched, the larger the ks, the more flat the cloth looks like. That is because when ks is smaller, the point masses in the system are pulled apart more. When we increase ks, the cloth is much less likely to be stretched by its own weight. </p>
+    <div>
+      <table>
+        <tr>
+          <td>
+            <img src="part2/ks/ks=10.png" align="middle" width="400px"/>
+            <figcaption align="middle">ks = 10</figcaption>
+          </td>
+          <td>
+            <img src="part2/ks/ks=100.png" align="middle" width="400px"/>
+            <figcaption align="middle">ks = 100</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div>
+      <table>
+        <tr>
+          <td>
+            <img src="part2/ks/ks=500.png" align="middle" width="400px"/>
+            <figcaption align="middle">ks = 500</figcaption>
+          </td>
+          <td>
+            <img src="part2/ks/ks=1000.png" align="middle" width="400px"/>
+            <figcaption align="middle">ks = 1000</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div>
+      <table>
+        <tr>
+          <td>
+            <img src="part2/ks/ks=5000.png" align="middle" width="400px"/>
+            <figcaption align="middle">ks = 5000</figcaption>
+          </td>
+          <td>
+            <img src="part2/ks/ks=10000.png" align="middle" width="400px"/>
+            <figcaption align="middle">ks = 10000</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+        <div>
+      <table>
+        <tr>
+          <td>
+            <img src="part2/ks/ks=100000.png" align="middle" width="400px"/>
+            <figcaption align="middle">ks = 100000</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+<br><br>
+
+<h3 align="middle">Different density</h3>
+<p> Now lets look at how different densities affect the cloth movement. You can see below images taken at the restful state, by increasing the density, the wrinkle part of the cloth is pulled down more by gravity. This is because the point masses positions are affected by the forces acted on them. The forces are mainly external forces and gravity. Gravity is affected by density of the cloth. If density increases, the gravity increases according. The direction of gravity is straight downward. Thus we see the cloth being pulled down more with higher density.  </p>
+    <div>
+      <table>
+        <tr>
+          <td>
+            <img src="part2/density/density1.png" align="middle" width="400px"/>
+            <figcaption align="middle">density = 1</figcaption>
+          </td>
+          <td>
+            <img src="part2/density/density5.png" align="middle" width="400px"/>
+            <figcaption align="middle">density = 5</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div>
+      <table>
+        <tr>
+          <td>
+            <img src="part2/density/density10.png" align="middle" width="400px"/>
+            <figcaption align="middle">density = 10</figcaption>
+          </td>
+          <td>
+            <img src="part2/density/density15.png" align="middle" width="400px"/>
+            <figcaption align="middle">density = 15</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div>
+      <table>
+        <tr>
+          <td>
+            <img src="part2/density/density20.png" align="middle" width="400px"/>
+            <figcaption align="middle">density = 20</figcaption>
+          </td>
+          <td>
+            <img src="part2/density/density30.png" align="middle" width="400px"/>
+            <figcaption align="middle">density = 30</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+        <div>
+      <table>
+        <tr>
+          <td>
+            <img src="part2/density/density50.png" align="middle" width="400px"/>
+            <figcaption align="middle">density = 50</figcaption>
+          </td>
+          <td>
+            <img src="part2/density/density100.png" align="middle" width="400px"/>
+            <figcaption align="middle">density = 100</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+<br><br>
+
+<h3 align="middle">Damping</h3>
+<p> Damping constant controls the oscillation of the spring force. The higher the damping constant, the less likely the cloth continues to travel. So you can see in below images, the smaller the damping constant, the longer the cloth stay oscillated and moving. The higher the damping constant, the shorter the time the cloth stay oscillated and moving. That is because energy will run out faster with higher damping constant, so the cloth stops moving faster. While with smaller damping constant, the energy doesn't run out fast, so the cloth keeps on oscillating for a longer period.  </p>
+<h4>Damping = 0</h4>
+    <div>
+      <table>
+        <tr>
+          <td>
+            <img src="part2/damping/damping=0.png" align="middle" width="300px"/>
+            <figcaption align="middle">first bounce</figcaption>
+          </td>
+          <td>
+            <img src="part2/damping/damping=0back1.png" align="middle" width="300px"/>
+            <figcaption align="middle">second bounce</figcaption>
+          </td>
+          <td>
+            <img src="part2/damping/damping=0back2.png" align="middle" width="300px"/>
+            <figcaption align="middle">third bounce</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+<h4>Damping = 0.091954</h4>
+    <div align="center">
+      <table style="width=100%">
+        <tr>
+          <td align="middle">
+            <img src="part2/damping/damping=0.091954.png" align="middle" width="500px"/>
+            <figcaption align="middle">first bounce</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+<h4>Damping = 0.2</h4>
+    <div>
+      <table>
+        <tr>
+          <td>
+            <img src="part2/damping/damping=0.2.png" align="middle" width="450px"/>
+            <figcaption align="middle">first bounce</figcaption>
+          </td>
+          <td>
+            <img src="part2/damping/damping=0.2back.png" align="middle" width="450px"/>
+            <figcaption align="middle">second bounce</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+<h4>Damping = 0.505747</h4>
+    <div align="center">
+      <table style="width=100%">
+        <tr>
+          <td align="middle">
+            <img src="part2/damping/damping=0.505747.png" align="middle" width="500px"/>
+            <figcaption align="middle">first bounce</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+<h4>Damping = 0.804598</h4>
+    <div align="center">
+      <table style="width=100%">
+        <tr>
+          <td align="middle">
+            <img src="part2/damping/damping=0.804598.png" align="middle" width="500px"/>
+            <figcaption align="middle">first bounce</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+<h4>Damping = 1.0</h4>
+    <div align="center">
+      <table style="width=100%">
+        <tr>
+          <td align="middle">
+            <img src="part2/damping/damping=1.0.png" align="middle" width="500px"/>
+            <figcaption align="middle">first bounce</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+<br><br>
+
+<h3 align="middle">pinned4.json</h3>
+<p> This is a screenshot of the shaded cloth from scene/pinned4.json in its final resting state </p>
+    <div align="center">
+      <table style="width=100%">
+        <tr>
+          <td align="middle">
+            <img src="part2/pinned4.png" align="middle" width="500px"/>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+<br><br>
+
+<h2 align="middle">Part 3: Handling collisions with other objects</h2>
+<h3 align="middle">cloth with different ks on sphere</h3>
+<p> The constant ks controls the stretchiness of the cloth as you can see in part 2. In this part, at the final restful state, the cloth is stretched more by its own weight when the ks is small as you can see in below images. Because the point masses are pulled apart more. </p>
+    <div align="center">
+      <table style="width=100%">
+        <tr>
+          <td align="middle">
+            <img src="part3/ks=500.png" align="middle" width="500px"/>
+            <figcaption align="middle">ks = 500</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div align="center">
+      <table style="width=100%">
+        <tr>
+          <td align="middle">
+            <img src="part3/ks=5000.png" align="middle" width="500px"/>
+            <figcaption align="middle">ks = 5000</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div align="center">
+      <table style="width=100%">
+        <tr>
+          <td align="middle">
+            <img src="part3/ks=50000.png" align="middle" width="500px"/>
+            <figcaption align="middle">ks = 50000</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+<h3 align="middle">cloth on plane</h3>
+    <div align="center">
+      <table style="width=100%">
+        <tr>
+          <td align="middle">
+            <img src="part3/plane.png" align="middle" width="500px"/>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+<br><br>
+
+<h2 align="middle">Part 4: Handling self-collisions</h2>
+<h3 align="middle">Different density</h3>
+<p> By comparing the different densities of point masses with the same default setting for all other constants, there is a significant difference in the way the cloth falls. When the density is small, the cloth falls on the plane in a more spread out behavior. While with higher density, the cloth folds more into itself when it starts landing on the plane. This is because the one with higher density, the gravity plays a more significant force on the cloth than other external forces. Thus, the cloth with higher density tends to not move to the side (or say spread out) because gravity is pulling the cloth straight downward. You can see the difference by comparing the first two sets of images below. The first set is density = 15, the second set is density  = 5, with default ks and damping values. </p>
+<h3 align="middle">Default setting: density = 15, ks = 5000, damping = 0.2</h3>
+    <div>
+      <table>
+        <tr>
+          <td>
+            <img src="part4/default/1.png" align="middle" width="400px"/>
+          </td>
+          <td>
+            <img src="part4/default/2.png" align="middle" width="400px"/>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div>
+      <table>
+        <tr>
+          <td>
+            <img src="part4/default/3.png" align="middle" width="400px"/>
+          </td>
+          <td>
+            <img src="part4/default/4.png" align="middle" width="400px"/>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div>
+      <table>
+        <tr>
+          <td>
+            <img src="part4/default/5.png" align="middle" width="400px"/>
+          </td>
+          <td>
+            <img src="part4/default/6.png" align="middle" width="400px"/>
+          </td>
+        </tr>
+      </table>
+    </div>
+        <div>
+      <table>
+        <tr>
+          <td>
+            <img src="part4/default/7.png" align="middle" width="400px"/>
+          </td>
+          <td>
+            <img src="part4/default/8.png" align="middle" width="400px"/>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+<br><br>
+
+<h3 align="middle">Default setting: density = 5, ks = 5000, damping = 0.2</h3>
+    <div>
+      <table>
+        <tr>
+          <td>
+            <img src="part4/density=5_ks=5000/1.png" align="middle" width="400px"/>
+          </td>
+          <td>
+            <img src="part4/density=5_ks=5000/2.png" align="middle" width="400px"/>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div>
+      <table>
+        <tr>
+          <td>
+            <img src="part4/density=5_ks=5000/3.png" align="middle" width="400px"/>
+          </td>
+          <td>
+            <img src="part4/density=5_ks=5000/4.png" align="middle" width="400px"/>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div>
+      <table>
+        <tr>
+          <td>
+            <img src="part4/density=5_ks=5000/5.png" align="middle" width="400px"/>
+          </td>
+          <td>
+            <img src="part4/density=5_ks=5000/6.png" align="middle" width="400px"/>
+          </td>
+        </tr>
+      </table>
+    </div>
+        <div>
+      <table>
+        <tr>
+          <td>
+            <img src="part4/density=5_ks=5000/7.png" align="middle" width="400px"/>
+          </td>
+          <td>
+            <img src="part4/density=5_ks=5000/8.png" align="middle" width="400px"/>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div>
+      <table>
+        <tr>
+          <td>
+            <img src="part4/density=5_ks=5000/9.png" align="middle" width="400px"/>
+          </td>
+          <td>
+            <img src="part4/density=5_ks=5000/10.png" align="middle" width="400px"/>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div>
+      <table>
+        <tr>
+          <td>
+            <img src="part4/density=5_ks=5000/11.png" align="middle" width="400px"/>
+          </td>
+          <td>
+            <img src="part4/density=5_ks=5000/12.png" align="middle" width="400px"/>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div>
+      <table>
+        <tr>
+          <td>
+            <img src="part4/density=5_ks=5000/13.png" align="middle" width="400px"/>
+          </td>
+          <td>
+            <img src="part4/density=5_ks=5000/14.png" align="middle" width="400px"/>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+<br><br>
+<h3 align="middle">Different ks</h3>
+<p> The constant ks controls the stretchiness of the cloth. With smaller ks (compare below set of ks = 500 with the first set in this part of ks = 5000), the cloth is stretched more so it looks more wrinkle when it starts to land on the plane than the one with higher ks. This also can be seen by looking at the final restful state of the cloth. The one with higher ks lying on the plane more flat than the one with smaller ks. In below set with ks = 500, there is more wrinkles in the final restful state. </p>
+
+<h3 align="middle">Default setting: density = 15, ks = 500, damping = 0.2</h3>
+    <div>
+      <table>
+        <tr>
+          <td>
+            <img src="part4/density=15_ks=500/1.png" align="middle" width="400px"/>
+          </td>
+          <td>
+            <img src="part4/density=15_ks=500/2.png" align="middle" width="400px"/>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div>
+      <table>
+        <tr>
+          <td>
+            <img src="part4/density=15_ks=500/3.png" align="middle" width="400px"/>
+          </td>
+          <td>
+            <img src="part4/density=15_ks=500/4.png" align="middle" width="400px"/>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div>
+      <table>
+        <tr>
+          <td>
+            <img src="part4/density=15_ks=500/5.png" align="middle" width="400px"/>
+          </td>
+          <td>
+            <img src="part4/density=15_ks=500/6.png" align="middle" width="400px"/>
+          </td>
+        </tr>
+      </table>
+    </div>
+        <div>
+      <table>
+        <tr>
+          <td>
+            <img src="part4/density=15_ks=500/7.png" align="middle" width="400px"/>
+          </td>
+          <td>
+            <img src="part4/density=15_ks=500/8.png" align="middle" width="400px"/>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <div>
+      <table>
+        <tr>
+          <td>
+            <img src="part4/density=15_ks=500/9.png" align="middle" width="400px"/>
+          </td>
+          <td>
+            <img src="part4/density=15_ks=500/10.png" align="middle" width="400px"/>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+
+</body>
+</html>
